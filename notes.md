@@ -23,3 +23,19 @@ Test avec un conteneur inexistant : code HTTP 404
 curl -v -X POST http://127.0.0.1:8080/api/users/tokens/provision/ -H "Content-Type: application/json" -H "Accept: application/json" -d "{\"username\":\"admin\",\"password\":\"admin\"}"
 ```
 
+# 5. Par l'API NetBox, créez un type de cluster Docker, puis un cluster docker-local.
+
+Type de cluster docker : 
+```bash
+curl -s -X POST "http://127.0.0.1:8080/api/virtualization/cluster-types/" -H "Authorization: Bearer nbt_Jx7k4VoDq9kG.5f3z0uOKBojc8jmRRrvfOz9OO5MJ9dulFakKWt77" -H "Content-Type: application/json" -H "Accept: application/json" -d "{\"name\":\"Docker\",\"slug\":\"docker\"}"
+```
+
+Cluster docker-local : 
+```bash
+curl -s -X POST "http://127.0.0.1:8080/api/virtualization/clusters/" -H "Authorization: Bearer nbt_Jx7k4VoDq9kG.5f3z0uOKBojc8jmRRrvfOz9OO5MJ9dulFakKWt77" -H "Content-Type: application/json" -H "Accept: application/json" -d "{\"name\":\"docker-local\",\"type\":1}"
+```
+
+
+
+
+
