@@ -1,0 +1,116 @@
+{
+  "date": "2026-10-26T11:10:47.010059+00:00",
+  "docker": {
+    "total_conteneurs": 13,
+    "conteneurs": [
+      {
+        "id": "aa2c84f2a27d",
+        "nom": "intrus",
+        "image": "nginx:alpine",
+        "etat": "running",
+        "cpu_pourcent": 0.0,
+        "memoire_mo": 12.71
+      },
+      {
+        "id": "3bddaa173945",
+        "nom": "web1",
+        "image": "nginx:alpine",
+        "etat": "exited",
+        "cpu_pourcent": 0.0,
+        "memoire_mo": 0.0
+      },
+      {
+        "id": "6e7628c7610d",
+        "nom": "apirest-netbox-1",
+        "image": "netboxcommunity/netbox:v4.7-5.1.1",
+        "etat": "running",
+        "cpu_pourcent": 0.01,
+        "memoire_mo": 1276.78
+      },
+      {
+        "id": "bb5ad1d9dc7b",
+        "nom": "apirest-netbox-postgres-1",
+        "image": "postgres:17-alpine",
+        "etat": "running",
+        "cpu_pourcent": 3.47,
+        "memoire_mo": 75.84
+      },
+      {
+        "id": "69b319de18f1",
+        "nom": "apirest-netbox-redis-1",
+        "image": "valkey/valkey:8-alpine",
+        "etat": "running",
+        "cpu_pourcent": 0.26,
+        "memoire_mo": 25.09
+      },
+      {
+        "id": "143f0df97c6a",
+        "nom": "apirest-docker-api-1",
+        "image": "tecnativa/docker-socket-proxy:v0.4.2",
+        "etat": "running",
+        "cpu_pourcent": 0.0,
+        "memoire_mo": 27.4
+      },
+      {
+        "id": "1f51f5b84e62",
+        "nom": "devops-control-plane",
+        "image": "kindest/node:v1.34.0@sha256:7416a61b42b1662ca6ca89f02028ac133a309a2a30ba309614e8ec94d976dc5a",
+        "etat": "exited",
+        "cpu_pourcent": 0.0,
+        "memoire_mo": 0.0
+      },
+      {
+        "id": "d197e5cbd729",
+        "nom": "chatbot-backend",
+        "image": "t3-intelligence-artificielle-backend",
+        "etat": "exited",
+        "cpu_pourcent": 0.0,
+        "memoire_mo": 0.0
+      },
+      {
+        "id": "db207a8e2a41",
+        "nom": "chatbot-frontend",
+        "image": "sha256:f0ba77f796e57c6fa89ae7f4fdad1665d6fcbd8e3f211535120542b337f9959e",
+        "etat": "exited",
+        "cpu_pourcent": 0.0,
+        "memoire_mo": 0.0
+      },
+      {
+        "id": "e06c9726052f",
+        "nom": "wordpress-wordpress-1",
+        "image": "wordpress:latest",
+        "etat": "exited",
+        "cpu_pourcent": 0.0,
+        "memoire_mo": 0.0
+      },
+      {
+        "id": "e696c5ed4905",
+        "nom": "wordpress-db-1",
+        "image": "mysql:5.7",
+        "etat": "exited",
+        "cpu_pourcent": 0.0,
+        "memoire_mo": 0.0
+      },
+      {
+        "id": "2cd2678550f7",
+        "nom": "phpmyadmin",
+        "image": "phpmyadmin/phpmyadmin",
+        "etat": "exited",
+        "cpu_pourcent": 0.0,
+        "memoire_mo": 0.0
+      },
+      {
+        "id": "0cdfc560a1ca",
+        "nom": "mariadb",
+        "image": "mariadb:latest",
+        "etat": "exited",
+        "cpu_pourcent": 0.0,
+        "memoire_mo": 0.0
+      }
+    ]
+  },
+  "netbox": {
+    "version": "4.7.3",
+    "object_types_count": 163
+  }
+}
