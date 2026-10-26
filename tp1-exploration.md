@@ -1,7 +1,8 @@
 Commandes TP1 : 
 
 # 1. Lisez la version, listez tous les conteneurs, puis seulement ceux qui portent le label, lisez le détail de web1 :
-http://127.0.0.1:2375 == api docker
+http://127.0.0.1:2375 == api Docker
+http://127.0.0.1:8080 == api Netbox
 
 ```bash
 curl -s "http://127.0.0.1:2375/version" # version
@@ -35,6 +36,7 @@ Cluster docker-local :
 curl -s -X POST "http://127.0.0.1:8080/api/virtualization/clusters/" -H "Authorization: Bearer nbt_Jx7k4VoDq9kG.5f3z0uOKBojc8jmRRrvfOz9OO5MJ9dulFakKWt77" -H "Content-Type: application/json" -H "Accept: application/json" -d "{\"name\":\"docker-local\",\"type\":1}"
 ```
 
+Je n'ai vu qu'à la fin de la réalisation du TP1 qu'il fallait faire apparaitre le résultat obtenu de chaque commande cURL. Je vais le faire pour les TP suivants
 
 
 
