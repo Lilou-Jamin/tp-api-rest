@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException, Response, Depends
 from typing import Literal
 from pydantic import BaseModel, Field
 from app.securite import verifier_token, verifier_admin
+from app.netbox_client import creer_vm, modifier_statut_vm, supprimer_vm
 
 app = FastAPI(title="API d'administration de conteneurs")
 
@@ -167,6 +168,15 @@ def creer_conteneur(donnees: ContainerCreate):
         )
 
     infos = recuperer_conteneur(nouvel_id)
+
+    try:
+        creer_vm(donnees.name)
+    except (requests.RequestException, RuntimeError) as erreur:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Conteneur créé dans Docker mais erreur NetBox : {erreur}"
+        )
+
     return formater_conteneur(infos)
 
 def recuperer_conteneur(id: str):
@@ -245,6 +255,18 @@ def arreter_conteneur(id: str):
         raise HTTPException(status_code=502, detail="Arrêt impossible")
 
     infos = recuperer_conteneur(id)
+
+    try:
+        modifier_statut_vm(
+            infos["Name"].lstrip("/"),
+            "offline"
+        )
+    except (requests.RequestException, RuntimeError) as erreur:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Conteneur arrêté mais synchronisation NetBox impossible : {erreur}"
+        )
+
     return formater_conteneur(infos)
 
 # Démarrage d'un conteneur
@@ -279,13 +301,26 @@ def demarrer_conteneur(id: str):
         raise HTTPException(status_code=502, detail="Démarrage impossible")
 
     infos = recuperer_conteneur(id)
+
+    try:
+        modifier_statut_vm(
+            infos["Name"].lstrip("/"),
+            "active"
+        )
+    except (requests.RequestException, RuntimeError) as erreur:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Conteneur démarré mais synchronisation NetBox impossible : {erreur}"
+        )
+
     return formater_conteneur(infos)
 
 
 # Suppression d'un conteneur
 @app.delete("/containers/{id}", status_code=204, dependencies=[Depends(verifier_admin)])
 def supprimer_conteneur(id: str):
-    recuperer_conteneur(id)
+    infos = recuperer_conteneur(id)
+    nom_conteneur = infos["Name"].lstrip("/")
 
     try:
         reponse = requests.delete(
@@ -311,6 +346,13 @@ def supprimer_conteneur(id: str):
             detail="Suppression impossible"
         )
 
+    try:
+        supprimer_vm(nom_conteneur)
+    except (requests.RequestException, RuntimeError) as erreur:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Conteneur supprimé mais erreur NetBox : {erreur}"
+        )
     return Response(status_code=204)
 
 """
