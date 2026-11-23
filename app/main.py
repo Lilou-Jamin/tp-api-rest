@@ -427,9 +427,9 @@ def recevoir_alerte(donnees: Alerte):
             detail="Impossible de redémarrer le conteneur"
         )
 
-    # Synchroniser le statut dans NetBox
+    # Synchroniser NetBox après le redémarrage
     try:
-        modifier_statut_vm(donnees.container, "active")
+        creer_vm(donnees.container)
 
     except (requests.RequestException, RuntimeError) as erreur:
         raise HTTPException(
