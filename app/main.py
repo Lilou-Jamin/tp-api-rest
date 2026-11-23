@@ -1,8 +1,9 @@
 import os
 import requests
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Response, Depends
 from typing import Literal
 from pydantic import BaseModel, Field
+from app.securite import verifier_token, verifier_admin
 
 app = FastAPI(title="API d'administration de conteneurs")
 
@@ -13,7 +14,7 @@ ETIQUETTE = "adminapi.managed"
 def health():
     return {"status": "ok"}
 
-@app.get("/containers")
+@app.get("/containers", dependencies=[Depends(verifier_token)])
 def lister_containers():
     try:
         res = requests.get(f"{DOCKER_API_URL}/containers/json?all=true", timeout=5)
@@ -36,7 +37,7 @@ def lister_containers():
             })
     return resultat
 
-@app.get("/containers/{id}")
+@app.get("/containers/{id}", dependencies=[Depends(verifier_token)])
 def detail_container(id: str):
     try:
         res = requests.get(f"{DOCKER_API_URL}/containers/{id}/json", timeout=5)
@@ -89,7 +90,7 @@ class ContainerCreate(BaseModel):
     ]
 
 # Créer un conteneur
-@app.post("/containers", status_code=201)
+@app.post("/containers", status_code=201, dependencies=[Depends(verifier_admin)])
 def creer_conteneur(donnees: ContainerCreate):
 
     # Vérifier si le nom est déjà utilisé
@@ -213,7 +214,7 @@ def formater_conteneur(infos):
     }
 
 # Arrêt d'un conteneur
-@app.post("/containers/{id}/stop") 
+@app.post("/containers/{id}/stop", dependencies=[Depends(verifier_admin)])
 def arreter_conteneur(id: str):
     infos = recuperer_conteneur(id)
 
@@ -247,7 +248,7 @@ def arreter_conteneur(id: str):
     return formater_conteneur(infos)
 
 # Démarrage d'un conteneur
-@app.post("/containers/{id}/start")
+@app.post("/containers/{id}/start", dependencies=[Depends(verifier_admin)])
 def demarrer_conteneur(id: str):
     infos = recuperer_conteneur(id)
 
@@ -282,7 +283,7 @@ def demarrer_conteneur(id: str):
 
 
 # Suppression d'un conteneur
-@app.delete("/containers/{id}", status_code=204)
+@app.delete("/containers/{id}", status_code=204, dependencies=[Depends(verifier_admin)])
 def supprimer_conteneur(id: str):
     recuperer_conteneur(id)
 
@@ -311,3 +312,41 @@ def supprimer_conteneur(id: str):
         )
 
     return Response(status_code=204)
+
+"""
+== lecture : 7/7 ==
+  [ok] GET /health répond 200 et {"status": "ok"}
+  [ok] GET /containers répond 200 avec une liste JSON
+  [ok] la liste contient le conteneur étiqueté, avec id, name, image et state
+  [ok] la liste ne montre pas les conteneurs sans label
+  [ok] GET /containers/{id} répond 200 avec le bon conteneur
+  [ok] GET /containers/{id} répond 404 pour un identifiant inconnu
+  [ok] GET /containers/{id} répond 404 pour un conteneur sans label
+
+== ecriture : 13/13 ==
+  [ok] POST /containers répond 201 avec le conteneur créé
+  [ok] le conteneur existe réellement dans Docker, démarré et étiqueté
+  [ok] POST /containers répond 409 si le nom est déjà pris
+  [ok] POST /containers répond 422 si le champ image manque
+  [ok] POST /containers répond 422 pour une image hors allowlist
+  [ok] POST /containers répond 422 pour un nom invalide (majuscules, espace)
+  [ok] POST /containers/{id}/stop répond 200 et le conteneur est arrêté
+  [ok] POST /containers/{id}/stop répond 409 s'il est déjà arrêté
+  [ok] POST /containers/{id}/start répond 200 et le conteneur redémarre
+  [ok] POST /containers/{id}/start répond 409 s'il est déjà démarré
+  [ok] POST /containers/{id}/stop répond 404 pour un identifiant inconnu
+  [ok] DELETE /containers/{id} répond 204 et le conteneur disparaît de Docker
+  [ok] DELETE /containers/{id} répond 404 la seconde fois
+
+== authentification : 9/9 ==
+  [ok] les trois secrets sont définis dans .env et tous différents
+  [ok] GET /health reste accessible sans token
+  [ok] GET /containers répond 401 sans token
+  [ok] GET /containers répond 401 avec un token inconnu
+  [ok] GET /containers répond 200 avec le token lecteur
+  [ok] POST /containers répond 401 sans token
+  [ok] POST /containers répond 403 avec le token lecteur
+  [ok] DELETE /containers/{id} répond 403 avec le token lecteur
+  [ok] POST /containers/{id}/stop répond 403 avec le token lecteur  
+"""
+
