@@ -1,6 +1,8 @@
 import os
 import requests
 from fastapi import FastAPI, HTTPException
+from typing import Literal
+from pydantic import BaseModel, Field
 
 app = FastAPI(title="API d'administration de conteneurs")
 
@@ -71,3 +73,26 @@ def detail_container(id: str):
 
 Total : 7/7 vérifications passées.
 """
+
+
+# TP 4 : écriture
+class ContainerCreate(BaseModel):
+    name: str = Field(
+        ...,
+        pattern=r"^[a-z][a-z0-9-]*$",
+        min_length=1,
+        max_length=63
+    )
+
+    image: Literal[
+        "nginx:alpine",
+        "redis:7-alpine",
+        "busybox:latest"
+    ]
+
+@app.post("/containers", status_code=201)
+def creer_conteneur(donnees: ContainerCreate):
+    return {
+        "name": donnees.name,
+        "image": donnees.image
+    }
