@@ -1,15 +1,35 @@
 import os
 import requests
-from fastapi import FastAPI, HTTPException, Response, Depends
+from fastapi import FastAPI, HTTPException, Response, Depends, Header
 from typing import Literal
 from pydantic import BaseModel, Field
 from app.securite import verifier_token, verifier_admin
 from app.netbox_client import creer_vm, modifier_statut_vm, supprimer_vm
+import secrets
 
 app = FastAPI(title="API d'administration de conteneurs")
 
 DOCKER_API_URL = os.environ.get("DOCKER_API_URL", "http://127.0.0.1:2375").rstrip("/")
 ETIQUETTE = "adminapi.managed"
+WEBHOOK_SECRET = os.environ["WEBHOOK_SECRET"]
+
+if not WEBHOOK_SECRET:
+    raise RuntimeError("WEBHOOK_SECRET ne doit pas être vide")
+
+def verifier_secret_webhook(
+    secret_recu: str | None = Header(
+        default=None,
+        alias="X-Webhook-Secret"
+    )
+):
+    if secret_recu is None or not secrets.compare_digest(
+        secret_recu,
+        WEBHOOK_SECRET
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Secret webhook absent ou incorrect"
+        )
 
 @app.get("/health")
 def health():
@@ -355,40 +375,70 @@ def supprimer_conteneur(id: str):
         )
     return Response(status_code=204)
 
-"""
-== lecture : 7/7 ==
-  [ok] GET /health répond 200 et {"status": "ok"}
-  [ok] GET /containers répond 200 avec une liste JSON
-  [ok] la liste contient le conteneur étiqueté, avec id, name, image et state
-  [ok] la liste ne montre pas les conteneurs sans label
-  [ok] GET /containers/{id} répond 200 avec le bon conteneur
-  [ok] GET /containers/{id} répond 404 pour un identifiant inconnu
-  [ok] GET /containers/{id} répond 404 pour un conteneur sans label
+class Alerte(BaseModel):
+    alert: Literal["container_down"]
 
-== ecriture : 13/13 ==
-  [ok] POST /containers répond 201 avec le conteneur créé
-  [ok] le conteneur existe réellement dans Docker, démarré et étiqueté
-  [ok] POST /containers répond 409 si le nom est déjà pris
-  [ok] POST /containers répond 422 si le champ image manque
-  [ok] POST /containers répond 422 pour une image hors allowlist
-  [ok] POST /containers répond 422 pour un nom invalide (majuscules, espace)
-  [ok] POST /containers/{id}/stop répond 200 et le conteneur est arrêté
-  [ok] POST /containers/{id}/stop répond 409 s'il est déjà arrêté
-  [ok] POST /containers/{id}/start répond 200 et le conteneur redémarre
-  [ok] POST /containers/{id}/start répond 409 s'il est déjà démarré
-  [ok] POST /containers/{id}/stop répond 404 pour un identifiant inconnu
-  [ok] DELETE /containers/{id} répond 204 et le conteneur disparaît de Docker
-  [ok] DELETE /containers/{id} répond 404 la seconde fois
+    container: str = Field(
+        ...,
+        pattern=r"^[a-z][a-z0-9-]*$",
+        min_length=1,
+        max_length=63
+    )
 
-== authentification : 9/9 ==
-  [ok] les trois secrets sont définis dans .env et tous différents
-  [ok] GET /health reste accessible sans token
-  [ok] GET /containers répond 401 sans token
-  [ok] GET /containers répond 401 avec un token inconnu
-  [ok] GET /containers répond 200 avec le token lecteur
-  [ok] POST /containers répond 401 sans token
-  [ok] POST /containers répond 403 avec le token lecteur
-  [ok] DELETE /containers/{id} répond 403 avec le token lecteur
-  [ok] POST /containers/{id}/stop répond 403 avec le token lecteur  
-"""
+
+@app.post(
+    "/webhooks/alerts",
+    status_code=202,
+    dependencies=[Depends(verifier_secret_webhook)]
+)
+def recevoir_alerte(donnees: Alerte):
+    infos = recuperer_conteneur(donnees.container)
+
+    if infos.get("State", {}).get("Running", False):
+        return {
+            "message": "Le conteneur fonctionne déjà",
+            "container": donnees.container
+        }
+
+    # Le conteneur est arrêté, on tente de le redémarrer
+    try:
+        reponse = requests.post(
+            f"{DOCKER_API_URL}/containers/{infos['Id']}/start",
+            timeout=10
+        )
+
+    except requests.RequestException:
+        raise HTTPException(
+            status_code=502,
+            detail="Impossible de contacter Docker"
+        )
+
+    # Le conteneur a disparu entre la vérification et l'action
+    if reponse.status_code == 404:
+        raise HTTPException(
+            status_code=404,
+            detail="Conteneur introuvable"
+        )
+
+    # Docker peut répondre 304 s'il a déjà redémarré
+    if reponse.status_code not in (204, 304):
+        raise HTTPException(
+            status_code=502,
+            detail="Impossible de redémarrer le conteneur"
+        )
+
+    # Synchroniser le statut dans NetBox
+    try:
+        modifier_statut_vm(donnees.container, "active")
+
+    except (requests.RequestException, RuntimeError) as erreur:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Erreur de synchronisation NetBox : {erreur}"
+        )
+
+    return {
+        "message": "Conteneur redémarré automatiquement",
+        "container": donnees.container
+    }
 
